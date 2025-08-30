@@ -1,13 +1,26 @@
+import os
 from datetime import datetime
+from dotenv import load_dotenv
 
-from flask import Flask, render_template, request, flash
+from flask_mail import Mail, Message
 from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, flash
+
+
+load_dotenv()
+
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "myapp123123"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
-
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 465
+app.config["MAIL_USE_SSL"] = True
+app.config["MAIL_USERNAME"] = os.getenv("username")
+app.config["MAIL_PASSWORD"] = os.getenv("password")
 db = SQLAlchemy(app)
+
+mail = Mail(app)
 
 class Form(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,6 +48,15 @@ def index():
                     occupation=occupation)
         db.session.add(form)
         db.session.commit()
+
+        message_body = (f"Thank you for your submission, we will get back to you as soon"
+                        f"as possible. Till then hope for the best, {first_name}.")
+        message = Message(subject="Job form submission",
+                          sender=app.config["MAIL_USERNAME"],
+                          recipients=[email],
+                          body=message_body)
+        mail.send(message)
+
         flash(f"{first_name}, Your form submitted successfully.", "success")
 
     return render_template("index.html")
